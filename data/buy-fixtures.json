@@ -1,0 +1,444 @@
+{
+  "gaming_pc": {
+    "label": "Gaming PC",
+    "requirements": [
+      {
+        "key": "cpu",
+        "label": "Processor",
+        "quantity": 1
+      },
+      {
+        "key": "motherboard",
+        "label": "Motherboard",
+        "quantity": 1
+      },
+      {
+        "key": "gpu",
+        "label": "Graphics card",
+        "quantity": 1
+      },
+      {
+        "key": "memory",
+        "label": "Memory",
+        "quantity": 1
+      },
+      {
+        "key": "storage",
+        "label": "Storage",
+        "quantity": 1
+      },
+      {
+        "key": "power",
+        "label": "Power supply",
+        "quantity": 1
+      },
+      {
+        "key": "case",
+        "label": "Case",
+        "quantity": 1
+      },
+      {
+        "key": "cooler",
+        "label": "CPU cooler",
+        "quantity": 1
+      }
+    ],
+    "offers": [
+      {
+        "id": "pc-cpu",
+        "key": "cpu",
+        "name": "AMD Ryzen 5 7600",
+        "supplier": "Circuit Supply",
+        "unitCents": 24000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "socket": "AM5"
+        }
+      },
+      {
+        "id": "pc-board",
+        "key": "motherboard",
+        "name": "B650 ATX motherboard",
+        "supplier": "Circuit Supply",
+        "unitCents": 13000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "socket": "AM5",
+          "memory": "DDR5",
+          "form": "ATX"
+        }
+      },
+      {
+        "id": "pc-gpu",
+        "key": "gpu",
+        "name": "Radeon RX 7700 XT",
+        "supplier": "Pixel Components",
+        "unitCents": 50000,
+        "capacity": 4,
+        "deliveryDays": 2,
+        "spec": {
+          "powerRequired": 650
+        }
+      },
+      {
+        "id": "pc-gpu-alt",
+        "key": "gpu",
+        "name": "GeForce RTX 4070 alternative",
+        "supplier": "Northstar Tech",
+        "unitCents": 55000,
+        "capacity": 3,
+        "deliveryDays": 3,
+        "replacement": true,
+        "spec": {
+          "powerRequired": 650
+        }
+      },
+      {
+        "id": "pc-ram",
+        "key": "memory",
+        "name": "32 GB DDR5 memory",
+        "supplier": "Circuit Supply",
+        "unitCents": 8000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "memory": "DDR5"
+        }
+      },
+      {
+        "id": "pc-ssd",
+        "key": "storage",
+        "name": "1 TB NVMe SSD",
+        "supplier": "Circuit Supply",
+        "unitCents": 7000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {}
+      },
+      {
+        "id": "pc-psu",
+        "key": "power",
+        "name": "750 W power supply",
+        "supplier": "Circuit Supply",
+        "unitCents": 9000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "watts": 750
+        }
+      },
+      {
+        "id": "pc-case",
+        "key": "case",
+        "name": "ATX mid-tower case",
+        "supplier": "Northstar Tech",
+        "unitCents": 7000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "form": "ATX"
+        }
+      },
+      {
+        "id": "pc-cooler",
+        "key": "cooler",
+        "name": "AM5 CPU air cooler",
+        "supplier": "Northstar Tech",
+        "unitCents": 4000,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "socket": "AM5"
+        }
+      },
+      {
+        "id": "pc-cpu-alt",
+        "key": "cpu",
+        "name": "AMD Ryzen 5 7600 (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 26400,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "socket": "AM5"
+        },
+        "replacement": true
+      },
+      {
+        "id": "pc-board-alt",
+        "key": "motherboard",
+        "name": "B650 ATX motherboard (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 14300,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "socket": "AM5",
+          "memory": "DDR5",
+          "form": "ATX"
+        },
+        "replacement": true
+      },
+      {
+        "id": "pc-ram-alt",
+        "key": "memory",
+        "name": "32 GB DDR5 memory (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 8800,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "memory": "DDR5"
+        },
+        "replacement": true
+      },
+      {
+        "id": "pc-ssd-alt",
+        "key": "storage",
+        "name": "1 TB NVMe SSD (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 7700,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {},
+        "replacement": true
+      },
+      {
+        "id": "pc-psu-alt",
+        "key": "power",
+        "name": "750 W power supply (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 9900,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "watts": 750
+        },
+        "replacement": true
+      },
+      {
+        "id": "pc-case-alt",
+        "key": "case",
+        "name": "ATX mid-tower case (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 7700,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "form": "ATX"
+        },
+        "replacement": true
+      },
+      {
+        "id": "pc-cooler-alt",
+        "key": "cooler",
+        "name": "AM5 CPU air cooler (alternative)",
+        "supplier": "Northstar Tech",
+        "unitCents": 4400,
+        "capacity": 10,
+        "deliveryDays": 2,
+        "spec": {
+          "socket": "AM5"
+        },
+        "replacement": true
+      }
+    ]
+  },
+  "event_chairs": {
+    "label": "Event chairs",
+    "requirements": [
+      {
+        "key": "chairs",
+        "label": "Matching event chairs",
+        "quantity": 120
+      }
+    ],
+    "offers": [
+      {
+        "id": "chairs-a",
+        "key": "chairs",
+        "name": "Black folding chairs",
+        "supplier": "Lone Star Rentals",
+        "unitCents": 600,
+        "capacity": 70,
+        "deliveryDays": 1,
+        "spec": {
+          "color": "black"
+        }
+      },
+      {
+        "id": "chairs-b",
+        "key": "chairs",
+        "name": "Black folding chairs",
+        "supplier": "Metro Event Supply",
+        "unitCents": 700,
+        "capacity": 50,
+        "deliveryDays": 1,
+        "spec": {
+          "color": "black"
+        }
+      },
+      {
+        "id": "chairs-c",
+        "key": "chairs",
+        "name": "Black folding chairs",
+        "supplier": "Eastside Event Co.",
+        "unitCents": 500,
+        "capacity": 50,
+        "deliveryDays": 2,
+        "replacement": true,
+        "spec": {
+          "color": "black"
+        }
+      },
+      {
+        "id": "chairs-wrong",
+        "key": "chairs",
+        "name": "White banquet chairs",
+        "supplier": "Pioneer Furnishings",
+        "unitCents": 400,
+        "capacity": 120,
+        "deliveryDays": 1,
+        "incompatible": true,
+        "spec": {
+          "color": "white"
+        }
+      },
+      {
+        "id": "chairs-backup70",
+        "key": "chairs",
+        "name": "Black folding chairs (alternative)",
+        "supplier": "Westside Rentals",
+        "unitCents": 400,
+        "capacity": 70,
+        "deliveryDays": 2,
+        "replacement": true,
+        "spec": {
+          "color": "black"
+        }
+      }
+    ]
+  },
+  "office_supplies": {
+    "label": "Office supplies",
+    "requirements": [
+      {
+        "key": "coffee",
+        "label": "Coffee beans",
+        "quantity": 2
+      },
+      {
+        "key": "cups",
+        "label": "Paper cups",
+        "quantity": 4
+      },
+      {
+        "key": "lids",
+        "label": "Cup lids",
+        "quantity": 4
+      }
+    ],
+    "offers": [
+      {
+        "id": "coffee-beans",
+        "key": "coffee",
+        "name": "Coffee beans, 1 kg",
+        "supplier": "Office Pantry",
+        "unitCents": 2400,
+        "capacity": 20,
+        "deliveryDays": 1,
+        "spec": {}
+      },
+      {
+        "id": "coffee-cups",
+        "key": "cups",
+        "name": "Paper cups, pack of 100",
+        "supplier": "Supply Depot",
+        "unitCents": 1200,
+        "capacity": 40,
+        "deliveryDays": 1,
+        "spec": {}
+      },
+      {
+        "id": "coffee-lids",
+        "key": "lids",
+        "name": "Cup lids, pack of 100",
+        "supplier": "Supply Depot",
+        "unitCents": 800,
+        "capacity": 40,
+        "deliveryDays": 1,
+        "spec": {}
+      },
+      {
+        "id": "coffee-beans-alt",
+        "key": "coffee",
+        "name": "Coffee beans, 1 kg (alternative)",
+        "supplier": "Backup Pantry",
+        "unitCents": 2640,
+        "capacity": 20,
+        "deliveryDays": 1,
+        "spec": {},
+        "replacement": true
+      },
+      {
+        "id": "coffee-cups-alt",
+        "key": "cups",
+        "name": "Paper cups, pack of 100 (alternative)",
+        "supplier": "Backup Pantry",
+        "unitCents": 1320,
+        "capacity": 40,
+        "deliveryDays": 1,
+        "spec": {},
+        "replacement": true
+      },
+      {
+        "id": "coffee-lids-alt",
+        "key": "lids",
+        "name": "Cup lids, pack of 100 (alternative)",
+        "supplier": "Backup Pantry",
+        "unitCents": 880,
+        "capacity": 40,
+        "deliveryDays": 1,
+        "spec": {},
+        "replacement": true
+      }
+    ]
+  },
+  "generic": {
+    "label": "Custom purchase",
+    "requirements": [
+      {
+        "key": "custom",
+        "label": "Item to specify",
+        "quantity": 1
+      }
+    ],
+    "offers": [
+      {
+        "id": "generic-1",
+        "key": "custom",
+        "name": "Edit this simulated item",
+        "supplier": "Example supplier",
+        "unitCents": 1000,
+        "capacity": 1000,
+        "deliveryDays": 1,
+        "spec": {},
+        "generic": true
+      },
+      {
+        "id": "generic-alt",
+        "key": "custom",
+        "name": "Edit this alternative simulated item",
+        "supplier": "Example backup supplier",
+        "unitCents": 1100,
+        "capacity": 1000,
+        "deliveryDays": 1,
+        "replacement": true,
+        "spec": {},
+        "generic": true
+      }
+    ]
+  }
+}

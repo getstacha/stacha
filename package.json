@@ -1,0 +1,17 @@
+{
+  "name": "stacha",
+  "version": "0.9.0",
+  "private": true,
+  "description": "AI-assisted purchasing workspace with live research and PayPal sandbox",
+  "scripts": {
+    "dev": "node server/index.js",
+    "start": "node server/index.js",
+    "test": "node --test",
+    "check:nebius": "node scripts/check-nebius.js",
+    "webhook:gateway": "node server/webhook-gateway.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "express": "^4.21.2"
+  }
+}

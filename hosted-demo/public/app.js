@@ -18,7 +18,7 @@ function steps(d){
 }
 function proposalMarkup(d){
  if(!d.proposal)return '';
- return `<div class="proposal-card">${d.proposal.allocations.map(a=>`<div class="supplier-card"><small>FICTIONAL OFFER</small><strong>${merchantName(a.merchant)}</strong><span>${a.quantity} monitor${a.quantity===1?'':'s'} · ${money(a.unitCents)} each</span><strong>${money(a.quantity*a.unitCents)}</strong></div>`).join('')}</div><div class="proposal-total"><span>${d.proposal.allocations.reduce((n,a)=>n+a.quantity,0)} replacement units proposed</span><strong>${money(d.proposal.additionalCents)}</strong></div>${d.proposal.unfilled.length?`<div class="impact">Some requirements remain uncovered. Review the details before proceeding.</div>`:''}`;
+ return `<div class="proposal-card">${d.proposal.allocations.map(a=>`<div class="supplier-card"><small>FICTIONAL OFFER</small><strong>${merchantName(a.merchant)}</strong><span>${a.quantity} monitor${a.quantity===1?'':'s'} · ${money(a.unitCents)} each</span><strong>${money(a.totalCents)}</strong></div>`).join('')}</div><div class="proposal-total"><span>${d.proposal.allocations.reduce((n,a)=>n+a.quantity,0)} replacement units proposed</span><strong>${money(d.proposal.additionalCents)}</strong></div>${d.proposal.unfilled.length?`<div class="impact">Some requirements remain uncovered. Review the details before proceeding.</div>`:''}`;
 }
 function story(d){
  const monitor=d.coverage.find(x=>x.name==='Monitor'),other=d.coverage.filter(x=>x.name!=='Monitor').reduce((n,x)=>n+x.committed,0),a=d.commitments.find(c=>c.merchant==='A'&&c.name==='Monitor'),preserved=(a?.status==='accepted'?a.quantity:0)+other;

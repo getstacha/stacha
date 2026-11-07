@@ -38,7 +38,7 @@ function view(s) {
   const o=s.o, monitor=o.requirements.find(r=>r.category==='monitor');
   const b=o.commitments.find(c=>c.merchantId==='B'&&c.requirementId===monitor.id);
   const coverage=living.coverage(o), money=living.money(o);
-  const proposal=o.proposal?{id:o.proposal.id,additionalCents:o.proposal.additionalCents,allocations:o.proposal.allocations.map(a=>({merchant:a.merchantId,quantity:a.quantity,unitCents:a.unitCents,requirementId:a.requirementId})),unfilled:o.proposal.unfilled}:null;
+  const proposal=o.proposal?{id:o.proposal.id,additionalCents:o.proposal.additionalCents,allocations:o.proposal.allocations.map(a=>({merchant:a.merchantId,quantity:a.quantity,unitCents:a.unitCents,totalCents:a.quantity*a.unitCents,requirementId:a.requirementId})),unfilled:o.proposal.unfilled}:null;
   const complete=b.status==='failed'&&coverage.every(r=>r.missing===0);
   return {
     deadline:o.deadline,

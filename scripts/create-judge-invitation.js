@@ -1,0 +1,4 @@
+'use strict';
+// Run locally with DATABASE_URL set to a secure PostgreSQL connection.
+const {JudgeStore}=require('../hosted-demo/judge-store');
+(async()=>{if(!process.env.DATABASE_URL)throw Error('Set DATABASE_URL to the Stacha database connection string.');const judgeId=process.argv[2];if(judgeId&&!/^[a-f0-9-]{36}$/i.test(judgeId))throw Error('Provide a valid judge ID or omit it for a new judge.');const store=new JudgeStore({connectionString:process.env.DATABASE_URL});try{await store.initialize();const invitation=await store.createInvitation({...(judgeId?{judgeId}:{}),expiresAt:new Date(Date.now()+24*60*60*1000).toISOString()});console.log(`Judge ID: ${invitation.judgeId}\nOne-time invitation code (expires in 24 hours): ${invitation.token}\nGive the code privately to this judge. To renew access, create another invitation using the same judge ID.`)}finally{await store.close()}})().catch(e=>{console.error(e.message);process.exitCode=1});

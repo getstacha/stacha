@@ -1,78 +1,51 @@
-// Public hackathon demo: isolated, in-memory fictional data only.
-const express = require('express');
-const crypto = require('node:crypto');
-const path = require('node:path');
-const living = require('../server/services/living-purchases');
-const app = express();
-app.disable('x-powered-by');
-app.use(express.json({limit: '2kb'}));
-const sessions = new Map(), TTL = 60 * 60 * 1000, MAX = 1000;
-function initial() {
-  const state = {livingPurchases: []};
-  const o = living.demo(state);
-  const proposal = living.plan(o);
-  living.approve(o, proposal.id);
-  for (const c of o.commitments) living.merchantCommit(o, c.id, c.merchantId, 'accept', {});
-  const b = o.commitments.find(c => c.merchantId === 'B');
-  living.simulatePayment(o, b.id, 'authorize', true);
-  return o;
+// Public multi-actor demo: fictional in-memory sessions; no provider credentials or real payments.
+const express=require('express'),crypto=require('node:crypto'),path=require('node:path');
+const living=require('../server/services/living-purchases'),neg=require('../server/services/merchant-negotiation');
+const app=express();app.disable('x-powered-by');app.use(express.json({limit:'8kb'}));
+const sessions=new Map(),caps=new Map(),MAX=500,TTL=60*60*1000,roles=['B','C','D'];
+const hash=x=>crypto.createHash('sha256').update(x).digest('hex'),id=()=>crypto.randomBytes(24).toString('base64url');
+const fail=(msg,status=409)=>{const e=Error(msg);e.status=status;throw e};
+function log(s,actor,message){s.events.push({id:crypto.randomUUID(),actor,message,at:new Date().toISOString()});s.version++}
+function initial(){const state={livingPurchases:[]},o=living.demo(state);o.offers=o.offers.filter(x=>!['C','D'].includes(x.merchantId));const p=living.plan(o);living.approve(o,p.id);for(const c of o.commitments)living.merchantCommit(o,c.id,c.merchantId,'accept',{});const b=o.commitments.find(c=>c.merchantId==='B');living.simulatePayment(o,b.id,'authorize',true);return o}
+function orderFor(c,status){return {id:crypto.randomUUID(),commitmentId:c.id,merchant:c.merchantId,quantity:c.quantity,unitCents:c.unitCents,status,createdAt:new Date().toISOString()}}
+function reset(s){s.o=initial();s.orders=s.o.commitments.map(c=>orderFor(c,'acknowledged'));s.receipts={};s.requests=[];s.counter=[];s.events=[];s.version=0;log(s,'Scenario engine','Fictional supplier commitments and a simulated $540 authorization were prepared.')}
+function clean(){const t=Date.now();for(const [key,s] of sessions)if(s.expires<t){sessions.delete(key);for(const h of s.capHashes)caps.delete(h)}}
+function create(mode){clean();if(sessions.size>=MAX)fail('Demo is busy. Please try again.',503);const sid=id(),tokens={buyer:id(),merchants:Object.fromEntries(roles.map(r=>[r,id()]))};const s={id:sid,mode:mode==='guided'?'guided':'two-party',expires:Date.now()+TTL,capHashes:[],createdAt:new Date().toISOString()};for(const [role,token] of Object.entries({buyer:tokens.buyer,...tokens.merchants})){const h=hash(token);caps.set(h,{sid,role});s.capHashes.push(h)}reset(s);sessions.set(sid,s);return {s,tokens}}
+function auth(req){clean();const m=(req.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{32})$/);const cap=m&&caps.get(hash(m[1])),s=cap&&sessions.get(cap.sid);if(!s||s.expires<Date.now())fail('This invitation has expired or is invalid.',401);return {s,role:cap.role}}
+function origin(req){try{const u=new URL(req.get('Origin'));return u.host===req.get('Host')&&['http:','https:'].includes(u.protocol)&&req.get('Sec-Fetch-Site')!=='cross-site'}catch{return false}}
+function rate(s){const n=Date.now();s.requests=s.requests.filter(t=>n-t<60000);if(s.requests.length>=120)fail('Please wait before trying again.',429);s.requests.push(n)}
+function monitor(o){return o.requirements.find(r=>r.category==='monitor')}
+function bcommit(o){return o.commitments.find(c=>c.merchantId==='B'&&c.requirementId===monitor(o).id)}
+function rfq(o){return neg.state(o).rfqs.find(r=>r.requirementId===monitor(o).id&&r.status==='open')}
+function merchantCommand(s,role,action,body={},source='merchant'){if(!roles.includes(role))fail('Supplier access required.',403);const who=source==='scenario'?`Scenario engine · Supplier ${role}`:`Supplier ${role}`;const o=s.o,c=o.commitments.find(x=>x.merchantId===role&&['requested','accepted'].includes(x.status));
+ if(action==='shortage'){if(!c||c.status!=='accepted')fail('No active commitment to update.');const q=Number(body.quantity);if(!Number.isInteger(q)||q<1||q>c.quantity-c.delivered)fail('Enter a valid shortage quantity.',400);if(q<c.quantity&&c.payment?.status==='authorized')fail('Partial shortage requires financial review of the simulated authorization.');living.merchantCommit(o,c.id,role,q===c.quantity?'withdraw':'reduce',{quantity:q});neg.createRfqs(o,'automatic');log(s,who,`Supplier ${role} reported ${q} monitor${q===1?'':'s'} unavailable.`)}
+ else if(action==='quote'){const r=rfq(o);if(!r)fail('No open request for replacement offers.');const q=Number(body.quantity),unitCents=Number(body.unitCents);neg.quote(o,r.id,role,{name:'Office monitor',quantity:q,unitCents,deliveryDate:o.deadline,expiresAt:new Date(Date.now()+24*3600000).toISOString(),specifications:[],message:'Fictional supplier quotation.'});for(const question of s.counter.filter(x=>x.merchant===role&&x.status==='open'))question.status='responded';log(s,who,`Supplier ${role} quoted ${q} monitors at $${(unitCents/100).toFixed(2)} each.`)}
+ else if(action==='accept'){if(!c||c.status!=='requested')fail('No commitment awaiting acknowledgment.');const order=s.orders.find(x=>x.commitmentId===c.id&&x.merchant===role&&x.status==='issued');if(!order||order.quantity!==c.quantity||order.unitCents!==c.unitCents)fail('The purchase order changed; request a new arrangement.');living.merchantCommit(o,c.id,role,'accept',{});order.status='acknowledged';log(s,who,`Supplier ${role} acknowledged ${c.quantity} monitors.`)}
+ else if(action==='deliver'){if(!c||c.status!=='accepted')fail('No accepted commitment to deliver.');const q=Number(body.quantity);living.merchantCommit(o,c.id,role,'deliver',{quantity:q});log(s,who,`Supplier ${role} reported ${q} units delivered. Buyer receipt is not confirmed.`)}
+ else fail('Unknown supplier action.',404)
 }
-function storyEntry(kind, title, detail) { return {kind, title, detail, at: new Date().toISOString()}; }
-function reset(s) {
-  s.o = initial();
-  s.story = [storyEntry('secured', 'Purchase plan established', 'All required equipment has fictional supplier commitments.'), storyEntry('authorization', 'Simulated authorization recorded', 'Supplier B has a fictional $540 authorization. No PayPal transaction occurred.')];
+function buyerCommand(s,action,body={}){const o=s.o,b=bcommit(o);if(action==='reset'){reset(s);return}
+ if(action==='scenario'){if(s.mode!=='guided')fail('The scenario engine is only available in guided mode.',403);if(b.status!=='failed'){merchantCommand(s,'B','shortage',{quantity:b.quantity},'scenario');return}const r=rfq(o);if(!r)fail('No open request.');for(const [role,q,price] of [['C',3,14500],['D',1,15000]])if(!o.offers.some(f=>f.merchantId===role&&f.status==='available'))merchantCommand(s,role,'quote',{quantity:q,unitCents:price},'scenario');return}
+ if(action==='plan'){living.plan(o);log(s,'Stacha calculation','Compared available fictional offers and prepared a nonbinding arrangement.')}
+ else if(action==='void'){living.simulatePayment(o,b.id,'void',true);log(s,'Buyer','Released the simulated authorization; no PayPal operation occurred.')}
+ else if(action==='approve'){living.approve(o,String(body.proposalId||''));neg.createRfqs(o,'automatic');for(const c of o.commitments.filter(c=>c.status==='requested'&&!s.orders.some(x=>x.commitmentId===c.id)))s.orders.push(orderFor(c,'issued'));log(s,'Buyer','Approved an arrangement and issued fictional purchase orders for supplier acknowledgment.');if(s.mode==='guided')for(const role of ['C','D'])if(o.commitments.some(c=>c.merchantId===role&&c.status==='requested'))merchantCommand(s,role,'accept',{},'scenario')}
+ else if(action==='counter'){const role=String(body.merchant||''),message=String(body.message||'').trim();if(!['C','D'].includes(role)||!rfq(o)||!message||message.length>300)fail('Enter a valid nonbinding request.',400);s.counter.push({id:crypto.randomUUID(),merchant:role,message,status:'open',at:new Date().toISOString()});living.touch(o,'buyer','Sent a nonbinding question to a fictional supplier.');log(s,'Buyer',`Sent a nonbinding question to Supplier ${role}.`)}
+ else fail('Unknown buyer action.',404)
 }
-function cleanup() { const now = Date.now(); for (const [id,s] of sessions) if (now-s.last>TTL) sessions.delete(id); }
-function session(req,res) {
-  cleanup();
-  const match=(req.headers.cookie||'').match(/(?:^|;\s*)demo_session=([a-f0-9]{48})(?:;|$)/), existing=match&&sessions.get(match[1]);
-  if(existing){existing.last=Date.now();return existing}
-  if(sessions.size>=MAX){res.status(503).json({error:'The demo is busy. Please try again later.'});return null}
-  const id=crypto.randomBytes(24).toString('hex'),s={last:Date.now(),requests:[]};reset(s);sessions.set(id,s);
-  res.append('Set-Cookie',`demo_session=${id}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600${process.env.NODE_ENV==='production'?'; Secure':''}`);return s;
-}
+function view(s,role){const o=s.o,r=monitor(o),b=bcommit(o),cov=living.coverage(o),money=living.money(o);if(role!=='buyer'){const c=o.commitments.filter(x=>x.merchantId===role),f=o.offers.filter(x=>x.merchantId===role),request=rfq(o);return {role,version:s.version,expires:s.expires,objective:o.name,deadline:o.deadline,request:request?{quantity:request.quantity,requirement:request.requirement}:null,offers:f.map(x=>({id:x.id,quantity:x.quantity,unitCents:x.unitCents,status:x.status,deliveryDate:x.deliveryDate})),commitments:c.map(x=>({id:x.id,name:o.requirements.find(y=>y.id===x.requirementId)?.name,quantity:x.quantity,delivered:x.delivered,status:x.status,unitCents:x.unitCents})),counter:s.counter.filter(x=>x.merchant===role),events:s.events.filter(x=>x.actor===`Supplier ${role}`||x.actor===`Scenario engine · Supplier ${role}`),orders:s.orders.filter(x=>x.merchant===role).map(x=>({id:x.id,quantity:x.quantity,unitCents:x.unitCents,status:x.status,commitmentId:x.commitmentId})),notice:'Fictional supplier and simulated commercial data.'}}
+ return {role,sessionId:s.id,mode:s.mode,version:s.version,expires:s.expires,objective:o.name,deadline:o.deadline,budgetCents:o.budgetCents,money,coverage:cov.map(x=>({id:x.id,name:x.name,quantity:x.quantity,committed:x.committed,missing:x.missing})),commitments:o.commitments.map(c=>({merchant:c.merchantId,requirementId:c.requirementId,quantity:c.quantity,name:o.requirements.find(x=>x.id===c.requirementId)?.name,status:c.status,delivered:c.delivered,unitCents:c.unitCents})),offers:o.offers.filter(x=>x.status==='available').map(f=>({merchant:f.merchantId,quantity:f.quantity,unitCents:f.unitCents,requirementId:f.requirementId})),proposal:o.proposal?{id:o.proposal.id,additionalCents:o.proposal.additionalCents,allocations:o.proposal.allocations.map(a=>({merchant:a.merchantId,quantity:a.quantity,unitCents:a.unitCents,totalCents:a.quantity*a.unitCents})),unfilled:o.proposal.unfilled}:null,paymentStatus:b.payment.status,supplierStatus:b.status,rfqOpen:!!rfq(o),events:s.events,complete:b.status==='failed'&&cov.every(x=>x.missing===0),hasRequested:o.commitments.some(c=>c.status==='requested')};}
 app.use((req,res,next)=>{res.set({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"});next()});
-app.get('/health',(_req,res)=>res.json({ok:true,mode:'fictional-demo'}));
-app.get('/api/demo',(req,res)=>{const s=session(req,res);if(s)res.json(view(s))});
-function view(s) {
-  const o=s.o, monitor=o.requirements.find(r=>r.category==='monitor');
-  const b=o.commitments.find(c=>c.merchantId==='B'&&c.requirementId===monitor.id);
-  const coverage=living.coverage(o), money=living.money(o);
-  const proposal=o.proposal?{id:o.proposal.id,additionalCents:o.proposal.additionalCents,allocations:o.proposal.allocations.map(a=>({merchant:a.merchantId,quantity:a.quantity,unitCents:a.unitCents,totalCents:a.quantity*a.unitCents,requirementId:a.requirementId})),unfilled:o.proposal.unfilled}:null;
-  const complete=b.status==='failed'&&coverage.every(r=>r.missing===0);
-  return {
-    deadline:o.deadline,
-    coverage:coverage.map(r=>({id:r.id,name:r.name,quantity:r.quantity,committed:r.committed,missing:r.missing})),
-    budgetCents:o.budgetCents,money,
-    commitments:o.commitments.map(c=>({merchant:c.merchantId,requirementId:c.requirementId,quantity:c.quantity,name:o.requirements.find(r=>r.id===c.requirementId).name,status:c.status,payment:c.payment.status,unitCents:c.unitCents})),
-    offers:o.offers.map(f=>({merchant:f.merchantId,requirementId:f.requirementId,quantity:f.quantity,unitCents:f.unitCents,status:f.status,deliveryDate:f.deliveryDate})),
-    proposal,events:o.events.map(e=>({time:e.time,source:e.source,message:e.message})),timeline:s.story,
-    can:{authorize:b.status==='accepted'&&b.payment.status==='not_paid',fail:b.status==='accepted',void:b.payment.status==='authorized',plan:b.status==='failed'&&!complete,approve:!!proposal?.allocations.length},
-    paymentStatus:b.payment.status,originalAuthorizationCents:b.quantity*b.unitCents,supplierStatus:b.status,complete
-  };
-}
-app.post('/api/demo/:action',(req,res)=>{
-  let valid=false;try{const u=new URL(req.get('Origin'));valid=u.host===req.get('Host')&&['http:','https:'].includes(u.protocol)}catch{}
-  if(!valid||req.get('Sec-Fetch-Site')==='cross-site')return res.status(403).json({error:'Request origin rejected.'});
-  const s=session(req,res);if(!s)return;
-  const now=Date.now();s.requests=s.requests.filter(t=>now-t<60000);if(s.requests.length>=60)return res.status(429).json({error:'Please wait before trying again.'});s.requests.push(now);
-  try{
-    // Apply each action to a copy so a failed transition cannot partially change a session.
-    const working={o:structuredClone(s.o),story:[...s.story]};
-    const o=working.o,b=o.commitments.find(c=>c.merchantId==='B'&&o.requirements.find(r=>r.id===c.requirementId)?.category==='monitor');
-    switch(req.params.action){
-      case 'reset':reset(working);break;
-      case 'authorize':living.simulatePayment(o,b.id,'authorize',true);working.story.push(storyEntry('authorization','Simulated authorization recorded','The fictional authorization is included in the reserved budget.'));break;
-      case 'failure':living.merchantCommit(o,b.id,'B','withdraw',{});working.story.push(storyEntry('failure','Supplier disruption reported',`${b.quantity} monitors became uncovered. Other commitments remain unchanged.`));break;
-      case 'plan':{const p=living.plan(o);const allocated=p.allocations.reduce((n,a)=>n+a.quantity,0);working.story.push(storyEntry('proposal','Recovery arrangement prepared',`${allocated} replacement units proposed for buyer review. The offers are fictional.`));break;}
-      case 'void':{const hadProposal=!!o.proposal;living.simulatePayment(o,b.id,'void',true);working.story.push(storyEntry('void','Simulated authorization released','The fictional payment obligation is resolved in this simulation. No PayPal transaction occurred.'));if(hadProposal){const p=living.plan(o);working.story.push(storyEntry('proposal','Recovery arrangement recalculated',`${p.allocations.reduce((n,a)=>n+a.quantity,0)} replacement units proposed after the financial state changed.`));}break;}
-      case 'approve':{living.approve(o,o.proposal?.id);for(const c of o.commitments.filter(x=>x.status==='requested'))living.merchantCommit(o,c.id,c.merchantId,'accept',{});working.story.push(storyEntry('approved','Replacement plan approved','The buyer approved the fictional arrangement; simulated suppliers accepted the replacement commitments.'));break;}
-      default:return res.status(404).json({error:'Unknown action.'});
-    }
-    s.o=working.o;s.story=working.story;res.json(view(s));
-  }catch(e){res.status(e.status||400).json({error:e.message})}
-});
+app.get('/health',(_req,res)=>res.json({ok:true,mode:'fictional-multi-actor'}));
+app.post('/api/sessions',(req,res,next)=>{try{if(!origin(req))fail('Origin rejected.',403);const {s,tokens}=create(req.body.mode);res.status(201).json({sessionId:s.id,expires:s.expires,buyerToken:tokens.buyer,merchantTokens:tokens.merchants})}catch(e){next(e)}});
+app.get('/api/session',(req,res,next)=>{try{const {s,role}=auth(req);res.json(view(s,role))}catch(e){next(e)}});
+app.post('/api/buyer/:action',(req,res,next)=>{try{if(!origin(req))fail('Origin rejected.',403);const {s,role}=auth(req);if(role!=='buyer')fail('Buyer access required.',403);rate(s);const clone={...s,o:structuredClone(s.o),events:structuredClone(s.events),counter:structuredClone(s.counter),orders:structuredClone(s.orders)};buyerCommand(clone,req.params.action,req.body);Object.assign(s,{o:clone.o,events:clone.events,counter:clone.counter,orders:clone.orders,version:clone.version});res.json(view(s,role))}catch(e){next(e)}});
+app.post('/api/merchant/:action',(req,res,next)=>{try{if(!origin(req))fail('Origin rejected.',403);const {s,role}=auth(req);if(!roles.includes(role))fail('Supplier access required.',403);rate(s);const clone={...s,o:structuredClone(s.o),events:structuredClone(s.events),counter:structuredClone(s.counter),orders:structuredClone(s.orders)};merchantCommand(clone,role,req.params.action,req.body);Object.assign(s,{o:clone.o,events:clone.events,counter:clone.counter,orders:clone.orders,version:clone.version});res.json(view(s,role))}catch(e){next(e)}});
+// Optional presenter listener binds only to loopback and is disabled unless configured.
+const operator=express();operator.disable('x-powered-by');operator.use(express.json({limit:'8kb'}));
+operator.post('/api/operator/:action',(req,res,next)=>{try{const secret=process.env.STACHA_DEMO_OPERATOR_TOKEN;if(!secret||secret.length<32||!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress)||req.get('X-Demo-Operator')!==secret)fail('Not found.',404);if(req.params.action==='create'){const {s,tokens}=create('two-party');return res.json({sessionId:s.id,buyerToken:tokens.buyer,merchantTokens:tokens.merchants})}const s=sessions.get(String(req.body.sessionId||''));if(!s||s.expires<Date.now())fail('Session not found or expired.',404);if(req.params.action==='status')return res.json(view(s,'buyer'));if(req.params.action==='reset'){reset(s);return res.json(view(s,'buyer'))}const role=String(req.body.merchant||''),actions={shortage:'shortage',quote:'quote',fulfillment:'deliver',acknowledge:'accept'};const action=actions[req.params.action];if(!action)fail('Not found.',404);const key=String(req.body.requestId||'');if(!/^[A-Za-z0-9_-]{1,100}$/.test(key))fail('A valid request ID is required.',400);const fingerprint=hash(JSON.stringify({action,role,quantity:req.body.quantity,unitCents:req.body.unitCents}));if(s.receipts[key]){if(s.receipts[key]!==fingerprint)fail('Request ID was already used for different terms.',409);return res.json(view(s,'buyer'))}const clone={...s,o:structuredClone(s.o),events:structuredClone(s.events),counter:structuredClone(s.counter),orders:structuredClone(s.orders),receipts:{...s.receipts}};merchantCommand(clone,role,action,req.body);clone.receipts[key]=fingerprint;Object.assign(s,{o:clone.o,events:clone.events,counter:clone.counter,orders:clone.orders,receipts:clone.receipts,version:clone.version});res.json(view(s,'buyer'))}catch(e){next(e)}});
+operator.use((e,_req,res,_next)=>res.status(e.status||500).json({error:e.status?e.message:'Request failed.'}));
+app.use('/api',(_req,res)=>res.status(404).json({error:'Not found.'}));
+app.get(['/demo/buyer','/demo/merchant'],(_req,res)=>res.sendFile(path.join(__dirname,'public','workspace.html')));
 app.use(express.static(path.join(__dirname,'public'),{index:'index.html',fallthrough:false,dotfiles:'deny'}));
-app.use((err,_req,res,_next)=>res.status(err.status||500).json({error:err.status===404?'Not found.':'Request failed.'}));
-if(require.main===module){const port=Number(process.env.PORT)||3000;app.listen(port,'0.0.0.0',()=>console.log(`Fictional Stacha demo on port ${port}`))}
-module.exports=app;
+app.use((e,_req,res,_next)=>res.status(e.status||500).json({error:e.status?e.message:'Request failed.'}));
+if(require.main===module){const port=Number(process.env.PORT)||3000;app.listen(port,'0.0.0.0',()=>console.log(`Fictional Stacha demo on port ${port}`));if(process.env.STACHA_DEMO_OPERATOR_TOKEN?.length>=32){const localPort=Number(process.env.STACHA_DEMO_OPERATOR_PORT)||3109;operator.listen(localPort,'127.0.0.1',()=>console.log(`Local presenter control on 127.0.0.1:${localPort}`))}}app.operator=operator;module.exports=app;

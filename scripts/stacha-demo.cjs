@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+// Local presenter controller. The operator listener is disabled unless configured.
+const crypto=require('node:crypto');
+const command=process.argv[2],sessionId=process.argv[3],args=process.argv.slice(4),option=name=>{const i=args.indexOf('--'+name);return i>=0?args[i+1]:undefined};
+const secret=process.env.STACHA_DEMO_OPERATOR_TOKEN,port=Number(process.env.STACHA_DEMO_OPERATOR_PORT)||3109,appPort=Number(process.env.PORT)||3000;
+if(!secret||secret.length<32){console.error('Set STACHA_DEMO_OPERATOR_TOKEN to at least 32 random characters in the server and this terminal.');process.exit(1)}
+const mapping={create:'create',status:'status',reset:'reset','merchant-shortage':'shortage','merchant-quote':'quote','merchant-fulfillment':'fulfillment','merchant-acknowledge':'acknowledge'};const action=mapping[command];
+if(!action||action!=='create'&&!sessionId){console.error('Usage: node scripts/stacha-demo.cjs create | status <session-id> | reset <session-id> | merchant-shortage <session-id> --merchant B --quantity 4 | merchant-quote <session-id> --merchant C --quantity 3 --price 145 | merchant-acknowledge <session-id> --merchant C | merchant-fulfillment <session-id> --merchant C --delivered 3');process.exit(1)}
+const payload={sessionId,merchant:option('merchant'),quantity:Number(option('quantity')||option('delivered')),unitCents:Math.round(Number(option('price'))*100)};
+payload.requestId=option('request-id')||crypto.createHash('sha256').update(JSON.stringify({command,...payload})).digest('hex');
+(async()=>{const response=await fetch(`http://127.0.0.1:${port}/api/operator/${action}`,{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Operator':secret},body:JSON.stringify(payload),signal:AbortSignal.timeout(5000)});const data=await response.json();if(!response.ok)throw Error(data.error||'Operator request failed.');if(action==='create'){console.log(`Session: ${data.sessionId}\nBuyer: http://localhost:${appPort}/demo/buyer#token=${data.buyerToken}`);for(const [name,token] of Object.entries(data.merchantTokens))console.log(`Supplier ${name}: http://localhost:${appPort}/demo/merchant#token=${token}`);console.log('Invitation links grant access; share only with intended participants.')}else console.log(JSON.stringify(data,null,2))})().catch(e=>{console.error(e.message);process.exitCode=1});

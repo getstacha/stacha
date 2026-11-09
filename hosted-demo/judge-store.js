@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS judge_projects (
  version integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE (id, judge_id)
 );
+CREATE TABLE IF NOT EXISTS judge_provider_usage (
+ scope text NOT NULL, provider text NOT NULL, window_name text NOT NULL,
+ started_at timestamptz NOT NULL, request_count integer NOT NULL CHECK(request_count >= 0),
+ PRIMARY KEY(scope,provider,window_name)
+);
 CREATE TABLE IF NOT EXISTS judge_payment_attempts (
  id uuid PRIMARY KEY, judge_id uuid NOT NULL, project_id uuid NOT NULL,
  state text NOT NULL, amount_cents bigint NOT NULL CHECK (amount_cents > 0),

@@ -8,7 +8,7 @@ const {JudgeStore}=require('./judge-store');
 const {makeJudgeAuth}=require('./judge-auth');
 const {attachCheckout}=require('./checkout');
 const {ProviderQuota}=require('./provider-quota');
-const app=express();app.disable('x-powered-by');app.use(express.json({limit:'8kb'}));
+const app=express();app.disable('x-powered-by');if(process.env.RENDER==='true')app.set('trust proxy',1);app.use(express.json({limit:'8kb'}));
 const sessions=new Map(),caps=new Map(),MAX=500,TTL=60*60*1000,roles=['B','C','D'];
 // Hosted usage is counted in PostgreSQL; local-only mode uses an in-memory equivalent.
 const memoryQuota=new ProviderQuota(),poolQuotas=new WeakMap();

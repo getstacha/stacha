@@ -1,6 +1,6 @@
 {
   "name": "stacha",
-  "version": "0.9.0",
+  "version": "2.6.1",
   "private": true,
   "description": "AI-assisted purchasing workspace with live research and PayPal sandbox",
   "scripts": {
@@ -8,7 +8,11 @@
     "start": "node server/index.js",
     "test": "node --test",
     "check:nebius": "node scripts/check-nebius.js",
-    "webhook:gateway": "node server/webhook-gateway.js"
+    "webhook:gateway": "node server/webhook-gateway.js",
+    "setup:owner": "node scripts/setup-owner.js",
+    "setup:merchant": "node scripts/setup-merchant-bridge.js",
+    "merchant:dev": "node merchant-service/server.js",
+    "portal:dev": "node server/supplier-portal-gateway.js"
   },
   "dependencies": {
     "dotenv": "^18.0.9",

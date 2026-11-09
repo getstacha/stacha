@@ -1,3 +1,4 @@
+require('./support/auth-fetch');
 const {test,before,after}=require('node:test');
 const assert=require('node:assert/strict');const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {PayPalPaymentProvider}=require('../server/services/paypal-payment-provider');

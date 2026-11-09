@@ -20,3 +20,6 @@ __pycache__/
 
 # This test depends on the private benchmark dataset.
 /test/benchmark.test.js
+
+# Private evaluation results and provider responses
+/evaluation/

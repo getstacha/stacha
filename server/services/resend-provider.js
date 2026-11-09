@@ -1,0 +1,14 @@
+const {DomainError}=require('../domain');
+const address=/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+class ResendProvider {
+ constructor({key=process.env.RESEND_API_KEY,from=process.env.RESEND_FROM_EMAIL,inboundDomain=process.env.RESEND_INBOUND_DOMAIN,fetcher=fetch}={}){this.key=key;this.from=from;this.inboundDomain=inboundDomain;this.fetch=fetcher}
+ get sendConfigured(){return Boolean(this.key&&address.test(this.from||'')&&this.receiveConfigured)}
+ get receiveConfigured(){return Boolean(this.key&&/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(this.inboundDomain||''))}
+ replyAddress(token){if(!this.receiveConfigured||!/^[a-f0-9]{32}$/.test(token))throw new DomainError('Configure a Resend receiving domain.',503);return `rfq-${token}@${this.inboundDomain.toLowerCase()}`}
+ async request(method,path,body,key){if(!this.key)throw new DomainError('Resend is not configured.',503);let response;try{response=await this.fetch(`https://api.resend.com${path}`,{method,headers:{Authorization:`Bearer ${this.key}`,'Content-Type':'application/json',...(key?{'Idempotency-Key':key}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)})}catch{const e=new Error('Provider request timed out or could not be confirmed.');e.uncertain=true;throw e}if(!response.ok){const e=new Error(`Resend returned HTTP ${response.status}.`);e.status=response.status;e.uncertain=response.status>=500||response.status===409||response.status===429;throw e}let data;try{data=await response.json()}catch{const e=new Error('Provider response could not be confirmed.');e.uncertain=true;throw e}return data}
+ async send(payload,key){if(!this.sendConfigured)throw new DomainError('Configure the Resend key, sender and receiving domain.',503);const data=await this.request('POST','/emails',payload,key);if(typeof data?.id!=='string'||!data.id||data.id.length>200){const e=new Error('Provider did not return a message reference.');e.uncertain=true;throw e}return data}
+ async listReceived(after){if(!this.receiveConfigured)throw new DomainError('Configure the Resend receiving domain.',503);const p=new URLSearchParams({limit:'50'});if(after)p.set('after',after);const d=await this.request('GET',`/emails/receiving?${p}`);if(!Array.isArray(d?.data)||typeof d.has_more!=='boolean'||d.data.length>50)throw new Error('Invalid provider list.');return d}
+ async getReceived(id){if(typeof id!=='string'||!/^[-a-zA-Z0-9_]{1,200}$/.test(id))throw new Error('Invalid provider reference.');return this.request('GET',`/emails/receiving/${encodeURIComponent(id)}`)}
+ async getSent(id){if(typeof id!=='string'||!/^[-a-zA-Z0-9_]{1,200}$/.test(id))throw new Error('Invalid provider reference.');return this.request('GET',`/emails/${encodeURIComponent(id)}`)}
+}
+module.exports={ResendProvider};

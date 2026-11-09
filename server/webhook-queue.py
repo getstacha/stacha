@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """Small SQLite-backed webhook queue. Input/output is JSON over stdin/stdout."""
-import json, sqlite3, sys, os, time
+import json, sqlite3, sys, os, time, stat
 os.umask(0o077)
 op, db = sys.argv[1:3]
 payload=json.load(sys.stdin)
-os.makedirs(os.path.dirname(os.path.abspath(db)),exist_ok=True)
+parent=os.path.dirname(os.path.abspath(db))
+os.makedirs(parent,mode=0o700,exist_ok=True)
+if os.path.islink(parent): raise ValueError('Unsafe database directory')
+flags=os.O_RDWR|os.O_CREAT|getattr(os,'O_NOFOLLOW',0)
+fd=os.open(db,flags,0o600)
+try:
+ st=os.fstat(fd)
+ if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1: raise ValueError('Unsafe database file')
+ os.fchmod(fd,0o600)
+finally: os.close(fd)
 conn=sqlite3.connect(db,timeout=10)
-os.chmod(db,0o600)
 conn.execute('PRAGMA journal_mode=WAL')
 conn.execute('PRAGMA synchronous=FULL')
 conn.execute('CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, body TEXT NOT NULL, headers TEXT NOT NULL, status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at INTEGER NOT NULL, received_at TEXT NOT NULL, last_attempt_at TEXT, delivered_at TEXT)')

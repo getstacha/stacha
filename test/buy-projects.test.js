@@ -1,3 +1,4 @@
+require('./support/auth-fetch');
 const {test,before,after}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const os=require('node:os');const path=require('node:path');

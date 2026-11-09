@@ -1,0 +1,6 @@
+# Set STACHA_PORTAL_DOMAIN to the public domain you control. Caddy provides HTTPS.
+# This file does not expose the buyer app; only the loopback gateway is proxied.
+{$STACHA_PORTAL_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:3221
+}

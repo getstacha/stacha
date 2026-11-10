@@ -14,6 +14,7 @@ __pycache__/
 
 # Internal notes, research, plans, audits, and documentation
 *.md
+!/README.md
 /research/
 /docs/
 /benchmarks/
